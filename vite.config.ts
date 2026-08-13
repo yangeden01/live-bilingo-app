@@ -18,6 +18,12 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss(), removeCrossoriginPlugin()],
     build: {
       modulePreload: false,
+      rollupOptions: {
+        output: {
+          format: 'iife' as const,
+          inlineDynamicImports: true,
+        },
+      },
     },
     resolve: {
       alias: {
