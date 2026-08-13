@@ -12,6 +12,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -114,7 +115,7 @@ fun MainScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isOfflineError by remember { mutableStateOf(false) }
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
-    val localAppUrl = "file:///android_asset/www/index.html"
+    val localAppUrl = "https://appassets.android.com/index.html"
     val webAppUrl = "https://ais-pre-2ezjlg7ygolcgvkdlo7zla-290275720433.asia-northeast1.run.app"
 
     val handleConnectionRetry: () -> Unit = {
@@ -222,6 +223,48 @@ fun MainScreen(
                     addJavascriptInterface(WebAppInterface(ctx, handleConnectionRetry) { isLoading = false }, "AndroidBridge")
 
                     webViewClient = object : WebViewClient() {
+                        override fun shouldInterceptRequest(
+                            view: WebView?,
+                            request: WebResourceRequest?
+                        ): WebResourceResponse? {
+                            val url = request?.url
+                            if (url != null && (url.host == "appassets.android.com" || url.host == "localhost")) {
+                                var path = url.path ?: ""
+                                if (path.startsWith("/")) path = path.substring(1)
+                                if (path.isEmpty() || path == "index.html") path = "index.html"
+
+                                val assetPath = "www/$path"
+                                return try {
+                                    val inputStream = ctx.assets.open(assetPath)
+                                    val mimeType = when {
+                                        path.endsWith(".html") -> "text/html"
+                                        path.endsWith(".js") || path.endsWith(".mjs") -> "text/javascript"
+                                        path.endsWith(".css") -> "text/css"
+                                        path.endsWith(".png") -> "image/png"
+                                        path.endsWith(".jpg") || path.endsWith(".jpeg") -> "image/jpeg"
+                                        path.endsWith(".svg") -> "image/svg+xml"
+                                        path.endsWith(".json") -> "application/json"
+                                        path.endsWith(".woff2") -> "font/woff2"
+                                        path.endsWith(".woff") -> "font/woff"
+                                        path.endsWith(".ttf") -> "font/ttf"
+                                        else -> "application/octet-stream"
+                                    }
+                                    WebResourceResponse(mimeType, "UTF-8", inputStream).apply {
+                                        responseHeaders = mapOf(
+                                            "Access-Control-Allow-Origin" to "*",
+                                            "Access-Control-Allow-Methods" to "GET, POST, OPTIONS",
+                                            "Access-Control-Allow-Headers" to "*",
+                                            "Cache-Control" to "no-cache, no-store, must-revalidate"
+                                        )
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("WebViewAsset", "Error opening asset $assetPath: ${e.message}")
+                                    null
+                                }
+                            }
+                            return super.shouldInterceptRequest(view, request)
+                        }
+
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                             super.onPageStarted(view, url, favicon)
                             if (url != null && !url.startsWith("data:")) {
@@ -242,7 +285,7 @@ fun MainScreen(
                         ) {
                             super.onReceivedError(view, request, error)
                             val reqUrl = request?.url?.toString() ?: ""
-                            if (request?.isForMainFrame == true && (reqUrl.startsWith("http://") || reqUrl.startsWith("https://"))) {
+                            if (request?.isForMainFrame == true && (reqUrl.startsWith("http://") || reqUrl.startsWith("https://")) && !reqUrl.contains("appassets.android.com")) {
                                 isOfflineError = true
                                 isLoading = false
                             }

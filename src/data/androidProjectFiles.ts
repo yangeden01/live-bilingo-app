@@ -361,6 +361,7 @@ fun MainScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isOfflineError by remember { mutableStateOf(false) }
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
+    val localAppUrl = "https://appassets.android.com/index.html"
     val webAppUrl = "https://ais-pre-2ezjlg7ygolcgvkdlo7zla-290275720433.asia-northeast1.run.app"
 
     LaunchedEffect(isLoading) {
@@ -390,20 +391,57 @@ fun MainScreen(
                         allowContentAccess = true
                         mediaPlaybackRequiresUserGesture = false
                         mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        useWideViewPort = false
-                        loadWithOverviewMode = false
+                        useWideViewPort = true
+                        loadWithOverviewMode = true
                         setSupportZoom(false)
                         textZoom = 100
-                        userAgentString = "$userAgentString AndroidApp/1.6.0"
-                        
-                        if (isNetworkAvailable(ctx)) {
-                            cacheMode = WebSettings.LOAD_DEFAULT
-                        } else {
-                            cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
-                        }
+                        userAgentString = "$userAgentString AndroidApp/2.1.2"
+                        cacheMode = WebSettings.LOAD_DEFAULT
                     }
 
                     webViewClient = object : WebViewClient() {
+                        override fun shouldInterceptRequest(
+                            view: WebView?,
+                            request: WebResourceRequest?
+                        ): WebResourceResponse? {
+                            val url = request?.url
+                            if (url != null && (url.host == "appassets.android.com" || url.host == "localhost")) {
+                                var path = url.path ?: ""
+                                if (path.startsWith("/")) path = path.substring(1)
+                                if (path.isEmpty() || path == "index.html") path = "index.html"
+
+                                val assetPath = "www/$path"
+                                return try {
+                                    val inputStream = ctx.assets.open(assetPath)
+                                    val mimeType = when {
+                                        path.endsWith(".html") -> "text/html"
+                                        path.endsWith(".js") || path.endsWith(".mjs") -> "text/javascript"
+                                        path.endsWith(".css") -> "text/css"
+                                        path.endsWith(".png") -> "image/png"
+                                        path.endsWith(".jpg") || path.endsWith(".jpeg") -> "image/jpeg"
+                                        path.endsWith(".svg") -> "image/svg+xml"
+                                        path.endsWith(".json") -> "application/json"
+                                        path.endsWith(".woff2") -> "font/woff2"
+                                        path.endsWith(".woff") -> "font/woff"
+                                        path.endsWith(".ttf") -> "font/ttf"
+                                        else -> "application/octet-stream"
+                                    }
+                                    WebResourceResponse(mimeType, "UTF-8", inputStream).apply {
+                                        responseHeaders = mapOf(
+                                            "Access-Control-Allow-Origin" to "*",
+                                            "Access-Control-Allow-Methods" to "GET, POST, OPTIONS",
+                                            "Access-Control-Allow-Headers" to "*",
+                                            "Cache-Control" to "no-cache, no-store, must-revalidate"
+                                        )
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("WebViewAsset", "Error opening asset $assetPath: \${e.message}")
+                                    null
+                                }
+                            }
+                            return super.shouldInterceptRequest(view, request)
+                        }
+
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                             super.onPageStarted(view, url, favicon)
                             isOfflineError = false
@@ -421,10 +459,10 @@ fun MainScreen(
                             error: WebResourceError?
                         ) {
                             super.onReceivedError(view, request, error)
-                            if (request?.isForMainFrame == true) {
+                            val reqUrl = request?.url?.toString() ?: ""
+                            if (request?.isForMainFrame == true && (reqUrl.startsWith("http://") || reqUrl.startsWith("https://")) && !reqUrl.contains("appassets.android.com")) {
                                 isOfflineError = true
                                 isLoading = false
-                                view?.loadUrl("about:blank")
                             }
                         }
 
@@ -437,7 +475,7 @@ fun MainScreen(
                     }
 
                     webViewInstance = this
-                    loadUrl(webAppUrl)
+                    loadUrl(localAppUrl)
                 }
             },
             modifier = Modifier.fillMaxSize()
