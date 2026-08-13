@@ -21,8 +21,8 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Live Bilingo 雙語電台 - 即時 AI 字幕翻譯</title>
-    <script type="module" crossorigin src="./assets/index-pJTcWhYP.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-B3I7EHz_.css">
+    <script type="module" src="./assets/index-pJTcWhYP.js"></script>
+    <link rel="stylesheet" href="./assets/index-B3I7EHz_.css">
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-blue-500 selection:text-white">
     <div id="root">
@@ -196,25 +196,27 @@
       window.addEventListener('error', function(e) {
         if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
           console.warn('Resource load error detected:', e.target.src || e.target.href);
-          if (sessionStorage.getItem('bilingo_reload_attempted') !== 'true') {
-            sessionStorage.setItem('bilingo_reload_attempted', 'true');
-            if ('serviceWorker' in navigator) {
-              navigator.serviceWorker.getRegistrations().then(function(regs) {
-                regs.forEach(function(r) { r.unregister(); });
-              });
+          try {
+            if (window.sessionStorage && sessionStorage.getItem('bilingo_reload_attempted') !== 'true') {
+              sessionStorage.setItem('bilingo_reload_attempted', 'true');
+              if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+                navigator.serviceWorker.getRegistrations().then(function(regs) {
+                  regs.forEach(function(r) { r.unregister(); });
+                });
+              }
+              if (window.caches) {
+                caches.keys().then(function(keys) {
+                  keys.forEach(function(k) { caches.delete(k); });
+                });
+              }
+              window.location.reload();
             }
-            if (window.caches) {
-              caches.keys().then(function(keys) {
-                keys.forEach(function(k) { caches.delete(k); });
-              });
-            }
-            window.location.reload(true);
-          }
+          } catch (err) {}
         }
       }, true);
     </script>
     <script>
-      if ('serviceWorker' in navigator) {
+      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         const isDev = location.hostname === 'localhost' || location.hostname.includes('ais-dev') || location.hostname.includes('run.app');
         if (isDev) {
           navigator.serviceWorker.getRegistrations().then((registrations) => {

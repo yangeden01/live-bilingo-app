@@ -194,7 +194,12 @@ fun MainScreen(
                     
                     setBackgroundColor(android.graphics.Color.parseColor("#0F172A"))
                     setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
-                    webChromeClient = WebChromeClient()
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                            android.util.Log.d("WebViewConsole", "${consoleMessage?.message()} -- line ${consoleMessage?.lineNumber()} of ${consoleMessage?.sourceId()}")
+                            return true
+                        }
+                    }
 
                     settings.apply {
                         javaScriptEnabled = true
@@ -206,8 +211,8 @@ fun MainScreen(
                         allowUniversalAccessFromFileURLs = true
                         mediaPlaybackRequiresUserGesture = false
                         mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        useWideViewPort = false
-                        loadWithOverviewMode = false
+                        useWideViewPort = true
+                        loadWithOverviewMode = true
                         setSupportZoom(false)
                         textZoom = 100
                         userAgentString = "$userAgentString AndroidApp/2.1.2"
