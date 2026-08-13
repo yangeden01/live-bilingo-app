@@ -410,12 +410,13 @@ fun MainScreen(
                             val urlString = url.toString()
                             val host = url.host ?: ""
 
-                            if (host == "appassets.android.com" || host == "localhost" || urlString.startsWith("file:///android_asset/")) {
-                                var path = if (urlString.startsWith("file:///android_asset/")) {
-                                    urlString.removePrefix("file:///android_asset/")
-                                } else {
-                                    url.path ?: ""
-                                }
+                            // Let WebView handle local file:// assets natively for maximum performance and reliability
+                            if (urlString.startsWith("file:///android_asset/") || urlString.startsWith("file://")) {
+                                return super.shouldInterceptRequest(view, request)
+                            }
+
+                            if (host == "appassets.android.com" || host == "localhost") {
+                                var path = url.path ?: ""
                                 if (path.startsWith("/")) path = path.substring(1)
                                 if (path.contains("?")) path = path.substringBefore("?")
                                 if (path.contains("#")) path = path.substringBefore("#")
