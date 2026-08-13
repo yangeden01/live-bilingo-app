@@ -328,6 +328,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -360,6 +362,13 @@ fun MainScreen(
     var isOfflineError by remember { mutableStateOf(false) }
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
     val webAppUrl = "https://ais-pre-2ezjlg7ygolcgvkdlo7zla-290275720433.asia-northeast1.run.app"
+
+    LaunchedEffect(isLoading) {
+        if (isLoading) {
+            delay(1200)
+            isLoading = false
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
         AndroidView(

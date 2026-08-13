@@ -48,18 +48,32 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import com.bilingo.radio.service.RadioForegroundService
 import com.bilingo.radio.viewmodel.RadioSubtitleViewModel
 
 class WebAppInterface(
     private val context: Context,
-    private val onRetry: () -> Unit
+    private val onRetry: () -> Unit,
+    private val onAppLoaded: () -> Unit
 ) {
     @JavascriptInterface
     fun retryConnection() {
         Handler(Looper.getMainLooper()).post {
             try {
                 onRetry()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    @JavascriptInterface
+    fun onPageReady() {
+        Handler(Looper.getMainLooper()).post {
+            try {
+                onAppLoaded()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -128,6 +142,13 @@ fun MainScreen(
         }
     }
 
+    LaunchedEffect(isLoading) {
+        if (isLoading) {
+            delay(1200)
+            isLoading = false
+        }
+    }
+
     DisposableEffect(context, webViewInstance) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
@@ -193,7 +214,7 @@ fun MainScreen(
                         cacheMode = WebSettings.LOAD_DEFAULT
                     }
 
-                    addJavascriptInterface(WebAppInterface(ctx, handleConnectionRetry), "AndroidBridge")
+                    addJavascriptInterface(WebAppInterface(ctx, handleConnectionRetry) { isLoading = false }, "AndroidBridge")
 
                     webViewClient = object : WebViewClient() {
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {

@@ -386,8 +386,16 @@ export default function App() {
     ];
   });
 
-  // Refresh top subtitle timestamp on startup so user sees current local time
+  // Refresh top subtitle timestamp on startup so user sees current local time & signal Android bridge page ready
   useEffect(() => {
+    try {
+      if ((window as any).AndroidBridge?.onPageReady) {
+        (window as any).AndroidBridge.onPageReady();
+      }
+    } catch (e) {
+      console.warn('AndroidBridge call error:', e);
+    }
+
     setSubtitles((prev) => {
       if (!prev || prev.length === 0) return prev;
       const now = Date.now();
