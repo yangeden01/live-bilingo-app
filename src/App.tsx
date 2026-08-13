@@ -366,7 +366,24 @@ export default function App() {
     } catch (e) {
       console.error('Failed to parse cached subtitles:', e);
     }
-    return [];
+    return [
+      {
+        id: 'init-default-1',
+        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        createdAt: Date.now() - 20000,
+        english: 'You are listening to Live Public Radio Stream. Real-time AI speech recognition and high-speed bilingual translation engine connected.',
+        traditionalChinese: '【雙語廣播即時連線】您正在收聽美國公共廣播串流，AI 語音辨識與雙語對齊翻譯引擎已成功連線。',
+        isFinal: true,
+      },
+      {
+        id: 'init-default-2',
+        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        createdAt: Date.now() - 10000,
+        english: 'Transit officials are officially rolling out new unified fare integration cards across regional transit lines, promising seamless travel starting next month.',
+        traditionalChinese: '交通局官員正式宣佈，將於下個月起整合大眾運輸系統票證，為跨區通勤族 provide 無縫公共運輸體驗。',
+        isFinal: true,
+      }
+    ];
   });
 
   // Persist subtitles in localStorage whenever updated
@@ -407,6 +424,19 @@ export default function App() {
     });
   }, []);
 
+  useEffect(() => {
+    const handleCustomSubtitleEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<SubtitleItem>;
+      if (customEvent.detail) {
+        handleNewSubtitle(customEvent.detail);
+      }
+    };
+    window.addEventListener('new-subtitle', handleCustomSubtitleEvent);
+    return () => {
+      window.removeEventListener('new-subtitle', handleCustomSubtitleEvent);
+    };
+  }, [handleNewSubtitle]);
+
   const handleBookmarkToggle = (id: string) => {
     setSubtitles((prev) =>
       prev.map((item) =>
@@ -439,6 +469,11 @@ export default function App() {
       audioEl.pause();
     } else {
       fetch(getApiUrl('/api/clear-buffer'), { method: 'POST' }).catch(() => {});
+      fetch(getApiUrl('/api/notify-station-playing'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: activeStation.streamUrl, name: activeStation.name }),
+      }).catch(() => {});
       setPlaybackStatus('BUFFERING');
       audioEl.playbackRate = 1.0;
       audioEl

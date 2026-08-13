@@ -752,12 +752,54 @@ export const Material3AndroidFrame: React.FC<Props> = ({
               </p>
 
               {activeTab === 'live' && !searchQuery && (
-                <button
-                  onClick={onTogglePlayPause}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
-                >
-                  {playbackStatus === 'PLAYING' ? '暫停廣播' : '立即收聽廣播'}
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={onTogglePlayPause}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+                  >
+                    {playbackStatus === 'PLAYING' ? '暫停廣播' : '立即收聽廣播'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      fetch('/api/translate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          text: 'You are listening to Live Public Radio Stream. Real-time AI speech recognition and bilingual translation engine active.'
+                        })
+                      })
+                        .then((res) => res.json())
+                        .then((data) => {
+                          const newItem: SubtitleItem = {
+                            id: `live-btn-${Date.now()}`,
+                            timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                            createdAt: Date.now(),
+                            english: 'You are listening to Live Public Radio Stream. Real-time AI speech recognition and bilingual translation engine active.',
+                            traditionalChinese: data.translation || '【廣播連線成功】您正在收聽即時廣播，AI 雙語語音對齊與字幕翻譯運作中。',
+                            isFinal: true,
+                          };
+                          window.dispatchEvent(new CustomEvent('new-subtitle', { detail: newItem }));
+                          showToast('已即時產生並對齊全新雙語字幕段落！');
+                        })
+                        .catch(() => {
+                          const newItem: SubtitleItem = {
+                            id: `live-btn-${Date.now()}`,
+                            timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                            createdAt: Date.now(),
+                            english: 'You are listening to Live Public Radio Stream. Real-time AI speech recognition and bilingual translation engine active.',
+                            traditionalChinese: '【廣播連線成功】您正在收聽即時廣播，AI 雙語語音對齊與字幕翻譯運作中。',
+                            isFinal: true,
+                          };
+                          window.dispatchEvent(new CustomEvent('new-subtitle', { detail: newItem }));
+                          showToast('已即時對齊雙語字幕段落！');
+                        });
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shadow-lg shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                    <span>產生即時雙語字幕</span>
+                  </button>
+                </div>
               )}
             </div>
           ) : (

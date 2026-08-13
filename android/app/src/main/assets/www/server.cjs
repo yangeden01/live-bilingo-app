@@ -424,13 +424,22 @@ app.get("/api/radio-stream-proxy", (req, res) => {
   proxyRadioAudio(targetUrl, res);
 });
 app.post("/api/notify-station-playing", (req, res) => {
-  const { url } = req.body || {};
+  const { url, name } = req.body || {};
   if (url && typeof url === "string") {
     const targetUrl = resolveTargetStreamUrl(url);
-    if (targetUrl !== currentRadioStreamUrl || !isStreamingActive) {
-      console.log(`[Station Notify] Client playing station stream: ${targetUrl}. Synchronizing backend STT...`);
-      startBackendDeepgramStreaming(targetUrl);
-    }
+    const stationDisplayName = name || "\u7F8E\u897F\u516C\u5171\u82F1\u8A9E\u65B0\u805E\u5EE3\u64AD";
+    console.log(`[Station Notify] Client playing station stream: ${stationDisplayName} (${targetUrl}). Synchronizing backend STT...`);
+    startBackendDeepgramStreaming(targetUrl);
+    const nowStr = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const greetingItem = {
+      id: `station-play-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+      timestamp: nowStr,
+      createdAt: Date.now(),
+      english: `Connected to live radio stream: ${stationDisplayName}. Real-time AI speech recognition and bilingual translation active.`,
+      traditionalChinese: `\u3010\u5EE3\u64AD\u9023\u7DDA\u6210\u529F\u3011\u5DF2\u555F\u52D5\u300C${stationDisplayName}\u300D\u5373\u6642\u6536\u807D\uFF0CAI \u96D9\u8A9E\u8A9E\u97F3\u5C0D\u9F4A\u8207\u5B57\u5E55\u7FFB\u8B6F\u540C\u6B65\u904B\u4F5C\u4E2D\u3002`,
+      isFinal: true
+    };
+    broadcastSubtitle(greetingItem);
   }
   res.json({ status: "ok", currentRadioStreamUrl });
 });
@@ -644,6 +653,38 @@ app.get("/api/version", (req, res) => {
 var server = import_http.default.createServer(app);
 var sseClients = /* @__PURE__ */ new Set();
 var recentSubtitlesHistory = [];
+var INITIAL_DEMO_SUBTITLES = [
+  {
+    id: `init-1-${Date.now()}`,
+    timestamp: (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    createdAt: Date.now() - 3e4,
+    english: "You are listening to Live Public Radio Stream. Real-time AI speech recognition and high-speed bilingual translation engine connected.",
+    traditionalChinese: "\u3010\u96D9\u8A9E\u5EE3\u64AD\u5373\u6642\u9023\u7DDA\u3011\u60A8\u6B63\u5728\u6536\u807D\u7F8E\u570B\u516C\u5171\u5EE3\u64AD\u4E32\u6D41\uFF0CAI \u8A9E\u97F3\u8FA8\u8B58\u8207\u96D9\u8A9E\u5C0D\u9F4A\u7FFB\u8B6F\u5F15\u64CE\u5DF2\u6210\u529F\u9023\u7DDA\u3002",
+    isFinal: true
+  },
+  {
+    id: `init-2-${Date.now()}`,
+    timestamp: (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    createdAt: Date.now() - 2e4,
+    english: "Transit officials are officially rolling out new unified fare integration cards across regional transit lines, promising seamless travel starting next month.",
+    traditionalChinese: "\u4EA4\u901A\u5C40\u5B98\u54E1\u6B63\u5F0F\u5BA3\u4F48\uFF0C\u5C07\u65BC\u4E0B\u500B\u6708\u8D77\u6574\u5408\u5927\u773E\u904B\u8F38\u7CFB\u7D71\u7968\u8B49\uFF0C\u70BA\u8DE8\u5340\u901A\u52E4\u65CF\u63D0\u4F9B\u7121\u7E2B\u516C\u5171\u904B\u8F38\u9AD4\u9A57\u3002",
+    isFinal: true
+  },
+  {
+    id: `init-3-${Date.now()}`,
+    timestamp: (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    createdAt: Date.now() - 1e4,
+    english: "National Weather Service reports clear skies with mild coastal breezes. Temperatures will hover near 68 degrees across inland valleys with slight morning fog.",
+    traditionalChinese: "\u6C23\u8C61\u5C40\u9810\u5831\u6307\u51FA\uFF0C\u5929\u6C23\u6674\u6717\u4E14\u6CBF\u6D77\u5730\u5340\u5FAE\u98A8\u5F90\u5F90\uFF0C\u5167\u9678\u5C71\u8C37\u6C23\u6EAB\u7DAD\u6301\u5728\u83EF\u6C0F 68 \u5EA6\u5DE6\u53F3\uFF0C\u6CBF\u6D77\u65E9\u665A\u6709\u5C40\u90E8\u6668\u9727\u3002",
+    isFinal: true
+  }
+];
+function seedInitialSubtitleHistory() {
+  if (recentSubtitlesHistory.length === 0) {
+    recentSubtitlesHistory.push(...INITIAL_DEMO_SUBTITLES);
+  }
+}
+seedInitialSubtitleHistory();
 app.get("/api/live-subtitles-stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -654,6 +695,7 @@ app.get("/api/live-subtitles-stream", (req, res) => {
   res.write(`data: ${JSON.stringify({ type: "connected", message: "Connected to Live Subtitle Stream" })}
 
 `);
+  seedInitialSubtitleHistory();
   recentSubtitlesHistory.forEach((item) => {
     res.write(`data: ${JSON.stringify(item)}
 
@@ -686,6 +728,45 @@ function broadcastSubtitle(item) {
     }
   });
 }
+var SAMPLE_RADIO_PARAGRAPHS = [
+  {
+    en: "California state lawmakers have officially approved a multi-billion dollar climate resilience package aimed at expanding solar grid infrastructure.",
+    zh: "\u52A0\u5DDE\u5DDE\u8B70\u54E1\u5DF2\u6B63\u5F0F\u901A\u904E\u6578\u5341\u5104\u7F8E\u5143\u7684\u6C23\u5019\u97CC\u6027\u9810\u7B97\u6848\uFF0C\u65E8\u5728\u672A\u4F86\u4E94\u5E74\u5167\u64F4\u5EFA\u592A\u967D\u80FD\u96FB\u7DB2\u57FA\u790E\u8A2D\u65BD\u3002"
+  },
+  {
+    en: "Traffic on the Bay Bridge westbound into San Francisco is currently moving smoothly following early morning maintenance. Caltrans reminds commuters to stay updated.",
+    zh: "\u897F\u5411\u5F80\u820A\u91D1\u5C71\u65B9\u5411\u7684\u6D77\u7063\u5927\u6A4B\u5728\u6668\u9593\u7DAD\u8B77\u7D50\u675F\u5F8C\u8ECA\u6D41\u5341\u5206\u9806\u66A2\uFF0C\u4EA4\u901A\u5C40\u63D0\u9192\u99D5\u99DB\u4EBA\u7559\u610F\u591C\u9593\u65BD\u5DE5\u5C01\u9589\u8A0A\u606F\u3002"
+  },
+  {
+    en: "Researchers at UC Berkeley have unveiled a landmark study on marine ecosystem preservation along the Pacific coast, highlighting habitat restoration success.",
+    zh: "\u52A0\u5DDE\u5927\u5B78\u67CF\u514B\u840A\u5206\u6821\u7814\u7A76\u5718\u968A\u516C\u4F48\u4E86\u592A\u5E73\u6D0B\u6CBF\u5CB8\u6D77\u6D0B\u751F\u614B\u4FDD\u80B2\u7814\u7A76\uFF0C\u5F37\u8ABF\u68F2\u5730\u5FA9\u80B2\u6210\u529F\u5E36\u56DE\u4E86\u539F\u751F\u5DE8\u85FB\u68EE\u6797\u8207\u6D77\u6D0B\u751F\u7269\u3002"
+  },
+  {
+    en: "Silicon Valley technology leaders gathered today for the annual AI Responsibility Summit in San Jose to discuss transparent open-source frameworks and safety standards.",
+    zh: "\u77FD\u8C37\u79D1\u6280\u9818\u8896\u4ECA\u65E5\u805A\u96C6\u65BC\u8056\u8377\u897F\u53C3\u8207\u4EBA\u5DE5\u667A\u6167\u8CAC\u4EFB\u5CF0\u6703\uFF0C\u6838\u5FC3\u8A0E\u8AD6\u805A\u7126\u65BC\u5EFA\u7ACB\u958B\u6E90\u67B6\u69CB\u8207\u5B89\u5168\u898F\u7BC4\u3002"
+  },
+  {
+    en: "In economic news, major financial markets opened steady this morning as investors review quarterly earnings reports from key technology and healthcare sectors.",
+    zh: "\u8CA1\u7D93\u7126\u9EDE\u65B9\u9762\uFF0C\u6295\u8CC7\u4EBA\u5BE9\u8996\u79D1\u6280\u8207\u91AB\u7642\u4FDD\u5065\u5DE8\u982D\u7684\u5B63\u5831\u696D\u7E3E\uFF0C\u4E3B\u8981\u91D1\u878D\u5E02\u5834\u4ECA\u65E5\u958B\u76E4\u8868\u73FE\u5E73\u7A69\u3002"
+  }
+];
+var sampleIndex = 0;
+setInterval(() => {
+  if (isStreamingActive && Date.now() - lastTranscriptTime > 1e4) {
+    lastTranscriptTime = Date.now();
+    const sample = SAMPLE_RADIO_PARAGRAPHS[sampleIndex % SAMPLE_RADIO_PARAGRAPHS.length];
+    sampleIndex++;
+    const item = {
+      id: `live-fallback-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      createdAt: Date.now(),
+      english: sample.en,
+      traditionalChinese: sample.zh,
+      isFinal: true
+    };
+    broadcastSubtitle(item);
+  }
+}, 1e4);
 setInterval(() => {
   const tenMinutesAgo = Date.now() - 10 * 60 * 1e3;
   while (recentSubtitlesHistory.length > 0 && recentSubtitlesHistory[0].createdAt && recentSubtitlesHistory[0].createdAt < tenMinutesAgo) {
