@@ -424,6 +424,39 @@ export default function App() {
     });
   }, []);
 
+  const handleManualTriggerSubtitle = useCallback(async () => {
+    const sampleParagraphs = [
+      "You are listening to Public News Radio. In top stories across the area today, transit officials are officially rolling out new unified fare integration cards across regional transit lines, promising seamless travel starting next month.",
+      "Forecasters from the National Weather Service report clear skies across San Francisco and Oakland today, with mild coastal breezes expected to persist throughout the evening. Temperatures will hover near 68 degrees across inland valleys with slight morning fog along the coast.",
+      "California state lawmakers have officially approved a multi-billion dollar climate resilience package aimed at expanding solar grid infrastructure and improving forest fire prevention across Northern California counties over the next five years.",
+      "Traffic on the Bay Bridge westbound into San Francisco is currently moving smoothly following early morning maintenance on the upper deck. Caltrans reminds commuters to stay updated on upcoming night-time lane closures along Highway 101.",
+      "Researchers at UC Berkeley have unveiled a landmark study on marine ecosystem preservation along the Pacific coast. The research highlights successful community-driven habitat restoration efforts that have brought back native kelp forests and marine biodiversity.",
+      "Silicon Valley technology leaders and ethicists gathered today for the annual AI Responsibility Summit in San Jose. Key discussions focused on establishing transparent open-source frameworks and safety standards for next-generation generative AI systems."
+    ];
+    const randomParagraph = sampleParagraphs[Math.floor(Math.random() * sampleParagraphs.length)];
+
+    try {
+      const res = await fetch(getApiUrl('/api/translate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: randomParagraph }),
+      });
+      const data = await res.json();
+      if (data.english && data.traditionalChinese) {
+        handleNewSubtitle({
+          id: `manual-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          createdAt: Date.now(),
+          english: data.english,
+          traditionalChinese: data.traditionalChinese,
+          isFinal: true,
+        });
+      }
+    } catch (e) {
+      console.error('Manual subtitle trigger error:', e);
+    }
+  }, [handleNewSubtitle]);
+
   useEffect(() => {
     const handleCustomSubtitleEvent = (e: Event) => {
       const customEvent = e as CustomEvent<SubtitleItem>;
@@ -716,6 +749,7 @@ export default function App() {
             onOpenStationManager={() => setIsStationModalOpen(true)}
             readingMode={readingMode}
             onReadingModeChange={setReadingMode}
+            onManualTriggerSubtitle={handleManualTriggerSubtitle}
           />
         )}
 

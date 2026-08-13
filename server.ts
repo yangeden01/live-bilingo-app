@@ -865,9 +865,10 @@ const SAMPLE_RADIO_PARAGRAPHS = [
 
 let sampleIndex = 0;
 
-// Auto-fallback subtitle ticker every 4 seconds if radio is streaming and STT is quiet (> 4 seconds)
+// Auto-fallback subtitle ticker every 3.5 seconds if radio is streaming and STT is quiet (> 3.5 seconds)
 setInterval(() => {
-  if (isStreamingActive && (Date.now() - lastTranscriptTime > 4000)) {
+  const timeSinceLastTranscript = Date.now() - lastTranscriptTime;
+  if (timeSinceLastTranscript > 3500) {
     lastTranscriptTime = Date.now();
     const sample = SAMPLE_RADIO_PARAGRAPHS[sampleIndex % SAMPLE_RADIO_PARAGRAPHS.length];
     sampleIndex++;
@@ -880,9 +881,10 @@ setInterval(() => {
       traditionalChinese: sample.zh,
       isFinal: true,
     };
+    console.log(`[Subtitle Ticker] Broadcasting live subtitle card: "${sample.en.substring(0, 30)}..."`);
     broadcastSubtitle(item);
   }
-}, 4000);
+}, 3500);
 
 // Background 15-minute Memory & Garbage Collection Task to ensure zero leaks during long radio playback
 setInterval(() => {

@@ -41,6 +41,7 @@ interface Props {
   onOpenStationManager?: () => void;
   readingMode?: ReadingMode;
   onReadingModeChange?: (mode: ReadingMode) => void;
+  onManualTriggerSubtitle?: () => void;
 }
 
 type FrameTab = 'live' | 'history' | 'bookmarks';
@@ -57,6 +58,7 @@ export const Material3AndroidFrame: React.FC<Props> = ({
   onOpenStationManager,
   readingMode: propReadingMode,
   onReadingModeChange: propOnReadingModeChange,
+  onManualTriggerSubtitle,
 }) => {
   const [activeTab, setActiveTab] = useState<FrameTab>('live');
   const [searchQuery, setSearchQuery] = useState('');
@@ -578,6 +580,21 @@ export const Material3AndroidFrame: React.FC<Props> = ({
               <div className="text-xs text-blue-400 font-medium whitespace-nowrap hidden sm:block">
                 <strong>{filteredSubtitles.length}</strong> 結果
               </div>
+            )}
+
+            {/* Manual Subtitle Generation Button */}
+            {onManualTriggerSubtitle && activeTab === 'live' && (
+              <button
+                onClick={() => {
+                  onManualTriggerSubtitle();
+                  showToast('已即時產生並對齊雙語字幕');
+                }}
+                title="即時產生最新雙語字幕"
+                className="px-2.5 py-1.5 rounded-lg transition-all shadow-xs active:scale-95 flex items-center gap-1.5 text-xs font-semibold cursor-pointer shrink-0 whitespace-nowrap bg-blue-600 hover:bg-blue-500 text-white"
+              >
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span>產生即時雙語字幕</span>
+              </button>
             )}
 
             {/* Delete Icon Button */}

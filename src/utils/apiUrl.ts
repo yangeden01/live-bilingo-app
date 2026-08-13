@@ -6,10 +6,12 @@ export function getApiUrl(path: string): string {
     return path;
   }
 
-  // When running inside Android WebView loaded from file:// or local assets
+  // Only prepend remote BACKEND_URL when running inside native Android file:// or offline local asset environment
   if (
     typeof window !== 'undefined' &&
-    (window.location.protocol === 'file:' || !window.location.hostname || window.location.hostname === 'localhost')
+    (window.location.protocol === 'file:' ||
+      window.location.origin === 'null' ||
+      window.location.href.startsWith('file://'))
   ) {
     const cleanPath = path.startsWith('/') ? path : '/' + path;
     return `${BACKEND_URL}${cleanPath}`;
