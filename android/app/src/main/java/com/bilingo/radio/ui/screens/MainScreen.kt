@@ -241,13 +241,11 @@ fun MainScreen(
                                 if (path.contains("?")) path = path.substringBefore("?")
                                 if (path.contains("#")) path = path.substringBefore("#")
 
-                                if (path.startsWith("assets/")) {
-                                    path = path.substring(7)
-                                }
-
-                                var assetPath = if (path.startsWith("www/")) path else "www/$path"
-                                if (assetPath == "www" || assetPath == "www/" || assetPath == "www/index.html") {
-                                    assetPath = "www/index.html"
+                                // Ensure correct asset path inside www/
+                                val assetPath = when {
+                                    path.isEmpty() || path == "index.html" || path == "www" || path == "www/" || path == "www/index.html" -> "www/index.html"
+                                    path.startsWith("www/") -> path
+                                    else -> "www/$path"
                                 }
 
                                 return try {
