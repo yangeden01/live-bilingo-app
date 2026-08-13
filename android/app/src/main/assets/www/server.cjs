@@ -752,7 +752,7 @@ var SAMPLE_RADIO_PARAGRAPHS = [
 ];
 var sampleIndex = 0;
 setInterval(() => {
-  if (isStreamingActive && Date.now() - lastTranscriptTime > 1e4) {
+  if (isStreamingActive && Date.now() - lastTranscriptTime > 4e3) {
     lastTranscriptTime = Date.now();
     const sample = SAMPLE_RADIO_PARAGRAPHS[sampleIndex % SAMPLE_RADIO_PARAGRAPHS.length];
     sampleIndex++;
@@ -766,7 +766,7 @@ setInterval(() => {
     };
     broadcastSubtitle(item);
   }
-}, 1e4);
+}, 4e3);
 setInterval(() => {
   const tenMinutesAgo = Date.now() - 10 * 60 * 1e3;
   while (recentSubtitlesHistory.length > 0 && recentSubtitlesHistory[0].createdAt && recentSubtitlesHistory[0].createdAt < tenMinutesAgo) {
@@ -823,11 +823,13 @@ function flushTranscriptParagraph(forceAll = false) {
   if (sentenceEndMatches.length > 0) {
     const lastMatch = sentenceEndMatches[sentenceEndMatches.length - 1];
     cutIndex = (lastMatch.index || 0) + lastMatch[0].trimEnd().length;
-  } else if (forceAll) {
+  } else if (forceAll || fullText.length >= 25 || bufferStartTime > 0 && Date.now() - bufferStartTime >= 2500) {
     const clauseMatches = [...fullText.matchAll(/[,—:](\s+|$)/g)];
     if (clauseMatches.length > 0) {
       const lastMatch = clauseMatches[clauseMatches.length - 1];
       cutIndex = (lastMatch.index || 0) + lastMatch[0].trimEnd().length;
+    } else {
+      cutIndex = fullText.length;
     }
   } else {
     return;
@@ -837,18 +839,12 @@ function flushTranscriptParagraph(forceAll = false) {
   if (cutIndex > 0 && cutIndex < fullText.length) {
     rawTextToFlush = fullText.slice(0, cutIndex).trim();
     textToKeep = fullText.slice(cutIndex).trim();
-  } else if (cutIndex <= 0 && !forceAll) {
-    return;
+  } else {
+    rawTextToFlush = fullText;
+    textToKeep = "";
   }
   pendingTranscriptBuffer = textToKeep;
-  if (textToKeep) {
-    bufferStartTime = Date.now();
-    paragraphFlushTimer = setTimeout(() => {
-      flushTranscriptParagraph(true);
-    }, 6e3);
-  } else {
-    bufferStartTime = 0;
-  }
+  bufferStartTime = textToKeep ? Date.now() : 0;
   const textToFlush = removeDuplicateWords(rawTextToFlush);
   if (textToFlush.length < 3) return;
   (async () => {
@@ -862,6 +858,7 @@ function flushTranscriptParagraph(forceAll = false) {
         traditionalChinese: traditionalChinese || textToFlush,
         isFinal: true
       };
+      console.log(`[Subtitle Broadcast] Broadcasting live subtitle: "${textToFlush.substring(0, 30)}..."`);
       broadcastSubtitle(item);
     } catch (err) {
       console.error("[Subtitle Broadcast Error]:", err);
@@ -1051,17 +1048,19 @@ function startBackendDeepgramStreaming(streamUrl = currentRadioStreamUrl) {
             lastTranscriptTime = Date.now();
             if (!pendingTranscriptBuffer) {
               bufferStartTime = Date.now();
-              paragraphFlushTimer = setTimeout(() => {
-                flushTranscriptParagraph(true);
-              }, 4500);
             }
             pendingTranscriptBuffer = pendingTranscriptBuffer ? `${pendingTranscriptBuffer} ${chunkText}` : chunkText;
             const elapsedMs = Date.now() - bufferStartTime;
             const wordCount = pendingTranscriptBuffer.split(/\s+/).filter(Boolean).length;
             const hasSentenceEnd = /[\.\?!;]\s*$/.test(pendingTranscriptBuffer);
             const isSpeechFinal = !!json.speech_final;
-            if (hasSentenceEnd && wordCount >= 5 || isSpeechFinal && hasSentenceEnd || elapsedMs >= 12e3) {
-              flushTranscriptParagraph(elapsedMs >= 12e3);
+            if (hasSentenceEnd && wordCount >= 2 || wordCount >= 5 || pendingTranscriptBuffer.length >= 25 || isSpeechFinal || elapsedMs >= 2500) {
+              flushTranscriptParagraph(true);
+            } else {
+              if (paragraphFlushTimer) clearTimeout(paragraphFlushTimer);
+              paragraphFlushTimer = setTimeout(() => {
+                flushTranscriptParagraph(true);
+              }, 2e3);
             }
           }
         }

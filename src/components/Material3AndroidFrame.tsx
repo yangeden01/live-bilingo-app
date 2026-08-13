@@ -213,9 +213,6 @@ export const Material3AndroidFrame: React.FC<Props> = ({
         if (liveClearedAt && item.createdAt && item.createdAt <= liveClearedAt) {
           return false;
         }
-        if (historyClearedAt && item.createdAt && item.createdAt <= historyClearedAt) {
-          return false;
-        }
       }
 
       // 2. History tab check: exclude items created before history cleared timestamp

@@ -463,11 +463,6 @@ export const AudioPlayerController: React.FC<Props> = ({
 
         es.onmessage = (event) => {
           try {
-            // If radio broadcast is currently stopped, ignore incoming stream subtitles
-            if (playbackStatusRef.current === 'STOPPED') {
-              return;
-            }
-
             const data = JSON.parse(event.data);
             if (data.id && data.english && data.traditionalChinese) {
               const createdAt = data.createdAt || Date.now();

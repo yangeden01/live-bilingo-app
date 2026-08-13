@@ -865,9 +865,9 @@ const SAMPLE_RADIO_PARAGRAPHS = [
 
 let sampleIndex = 0;
 
-// Auto-fallback subtitle ticker every 10 seconds if radio is streaming and STT is quiet
+// Auto-fallback subtitle ticker every 4 seconds if radio is streaming and STT is quiet (> 4 seconds)
 setInterval(() => {
-  if (isStreamingActive && (Date.now() - lastTranscriptTime > 10000)) {
+  if (isStreamingActive && (Date.now() - lastTranscriptTime > 4000)) {
     lastTranscriptTime = Date.now();
     const sample = SAMPLE_RADIO_PARAGRAPHS[sampleIndex % SAMPLE_RADIO_PARAGRAPHS.length];
     sampleIndex++;
@@ -882,7 +882,7 @@ setInterval(() => {
     };
     broadcastSubtitle(item);
   }
-}, 10000);
+}, 4000);
 
 // Background 15-minute Memory & Garbage Collection Task to ensure zero leaks during long radio playback
 setInterval(() => {
@@ -970,11 +970,13 @@ function flushTranscriptParagraph(forceAll = false) {
   if (sentenceEndMatches.length > 0) {
     const lastMatch = sentenceEndMatches[sentenceEndMatches.length - 1];
     cutIndex = (lastMatch.index || 0) + lastMatch[0].trimEnd().length;
-  } else if (forceAll) {
+  } else if (forceAll || fullText.length >= 25 || (bufferStartTime > 0 && Date.now() - bufferStartTime >= 2500)) {
     const clauseMatches = [...fullText.matchAll(/[,—:](\s+|$)/g)];
     if (clauseMatches.length > 0) {
       const lastMatch = clauseMatches[clauseMatches.length - 1];
       cutIndex = (lastMatch.index || 0) + lastMatch[0].trimEnd().length;
+    } else {
+      cutIndex = fullText.length;
     }
   } else {
     // Sentence is still incomplete, wait for punctuation before cutting
@@ -987,20 +989,13 @@ function flushTranscriptParagraph(forceAll = false) {
   if (cutIndex > 0 && cutIndex < fullText.length) {
     rawTextToFlush = fullText.slice(0, cutIndex).trim();
     textToKeep = fullText.slice(cutIndex).trim();
-  } else if (cutIndex <= 0 && !forceAll) {
-    return;
+  } else {
+    rawTextToFlush = fullText;
+    textToKeep = '';
   }
 
   pendingTranscriptBuffer = textToKeep;
-
-  if (textToKeep) {
-    bufferStartTime = Date.now();
-    paragraphFlushTimer = setTimeout(() => {
-      flushTranscriptParagraph(true);
-    }, 6000);
-  } else {
-    bufferStartTime = 0;
-  }
+  bufferStartTime = textToKeep ? Date.now() : 0;
 
   const textToFlush = removeDuplicateWords(rawTextToFlush);
   if (textToFlush.length < 3) return;
@@ -1019,6 +1014,7 @@ function flushTranscriptParagraph(forceAll = false) {
         isFinal: true,
       };
 
+      console.log(`[Subtitle Broadcast] Broadcasting live subtitle: "${textToFlush.substring(0, 30)}..."`);
       broadcastSubtitle(item);
     } catch (err) {
       console.error('[Subtitle Broadcast Error]:', err);
@@ -1241,9 +1237,6 @@ function startBackendDeepgramStreaming(streamUrl = currentRadioStreamUrl) {
 
             if (!pendingTranscriptBuffer) {
               bufferStartTime = Date.now();
-              paragraphFlushTimer = setTimeout(() => {
-                flushTranscriptParagraph(true);
-              }, 4500);
             }
 
             pendingTranscriptBuffer = pendingTranscriptBuffer
@@ -1255,10 +1248,24 @@ function startBackendDeepgramStreaming(streamUrl = currentRadioStreamUrl) {
             const hasSentenceEnd = /[\.\?!;]\s*$/.test(pendingTranscriptBuffer);
             const isSpeechFinal = !!json.speech_final;
 
-            // Priority: keep sentence integrity intact
-            // Flush when a sentence boundary (.?!;) exists, or speech_final with punctuation, or timeout > 12s
-            if ((hasSentenceEnd && wordCount >= 5) || (isSpeechFinal && hasSentenceEnd) || elapsedMs >= 12000) {
-              flushTranscriptParagraph(elapsedMs >= 12000);
+            // Fast responsive flush conditions for live radio playback:
+            // 1. Word count >= 5 or text length >= 25
+            // 2. Sentence boundary (.?!;) with at least 2 words
+            // 3. Speech final flag from Deepgram
+            // 4. Elapsed buffer time >= 2500ms
+            if (
+              (hasSentenceEnd && wordCount >= 2) ||
+              wordCount >= 5 ||
+              pendingTranscriptBuffer.length >= 25 ||
+              isSpeechFinal ||
+              elapsedMs >= 2500
+            ) {
+              flushTranscriptParagraph(true);
+            } else {
+              if (paragraphFlushTimer) clearTimeout(paragraphFlushTimer);
+              paragraphFlushTimer = setTimeout(() => {
+                flushTranscriptParagraph(true);
+              }, 2000);
             }
           }
         }
