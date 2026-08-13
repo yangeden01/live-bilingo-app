@@ -98,7 +98,16 @@ class RadioForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        broadcastMediaControl(ACTION_STOP)
+        releaseWakeLock()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
     override fun onDestroy() {
+        broadcastMediaControl(ACTION_STOP)
         releaseWakeLock()
         super.onDestroy()
     }

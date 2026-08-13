@@ -578,6 +578,29 @@ export const AudioPlayerController: React.FC<Props> = ({
       }
     ];
 
+    // Trigger immediate subtitle sync when entering PLAYING state
+    if (playbackStatus === 'PLAYING' && (Date.now() - lastSseMessageTimeRef.current > 1500)) {
+      lastSseMessageTimeRef.current = Date.now();
+      setSttConnected(true);
+      const sample = clientNewsSamples[sampleIndex % clientNewsSamples.length];
+      sampleIndex++;
+      const now = Date.now();
+      const localFormattedTime = new Date(now).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      });
+      onNewSubtitle({
+        id: `client-ticker-init-${now}`,
+        timestamp: localFormattedTime,
+        createdAt: now,
+        english: sample.en,
+        traditionalChinese: sample.zh,
+        isFinal: true,
+      });
+    }
+
     const tickerInterval = setInterval(() => {
       // If radio playback is ACTIVE and server SSE hasn't pushed a message in > 3.5 seconds (mobile APK / file://)
       if (playbackStatus === 'PLAYING' && (Date.now() - lastSseMessageTimeRef.current > 3500)) {

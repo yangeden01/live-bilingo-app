@@ -386,6 +386,26 @@ export default function App() {
     ];
   });
 
+  // Refresh top subtitle timestamp on startup so user sees current local time
+  useEffect(() => {
+    setSubtitles((prev) => {
+      if (!prev || prev.length === 0) return prev;
+      const now = Date.now();
+      const formatted = new Date(now).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      });
+      return prev.map((item, idx) => {
+        if (idx === 0) {
+          return { ...item, timestamp: formatted, createdAt: now };
+        }
+        return item;
+      });
+    });
+  }, []);
+
   // Persist subtitles in localStorage whenever updated
   useEffect(() => {
     try {

@@ -152,6 +152,13 @@ fun MainScreen(
             } catch (e: Exception) {
                 // ignore
             }
+            try {
+                webViewInstance?.loadUrl("about:blank")
+                webViewInstance?.destroy()
+                webViewInstance = null
+            } catch (e: Exception) {
+                // ignore
+            }
         }
     }
 
