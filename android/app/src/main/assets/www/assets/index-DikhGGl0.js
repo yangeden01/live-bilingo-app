@@ -1024,24 +1024,8 @@ fun MainScreen(
             }
         }
 
-        if (isLoading && !isOfflineError) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF0F172A)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = Color(0xFF38BDF8))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "正在連線至 Live Bilingo 電台...",
-                        color = Color(0xFF94A3B8),
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        }
+        // WebView renders directly with its own HTML/React splash screen
+        if (isOfflineError) {
     }
 }`},{path:"android/app/src/main/java/com/bilingo/radio/ui/components/BilingualCard.kt",name:"BilingualCard.kt",category:"ui",language:"kotlin",content:`package com.bilingo.radio.ui.components
 
