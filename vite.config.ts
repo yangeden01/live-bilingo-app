@@ -17,7 +17,9 @@ export default defineConfig(() => {
     base: './',
     plugins: [react(), tailwindcss(), removeCrossoriginPlugin()],
     build: {
+      target: 'es2018',
       modulePreload: false,
+      cssCodeSplit: false,
       rollupOptions: {
         output: {
           format: 'iife' as const,

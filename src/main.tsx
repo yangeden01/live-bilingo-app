@@ -7,8 +7,23 @@ try {
   sessionStorage.removeItem('bilingo_reload_attempted');
 } catch (e) {}
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+function mountApp() {
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', mountApp);
+    } else {
+      setTimeout(mountApp, 50);
+    }
+    return;
+  }
+
+  createRoot(rootElement).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+}
+
+mountApp();
+

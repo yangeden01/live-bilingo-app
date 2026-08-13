@@ -115,7 +115,7 @@ fun MainScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isOfflineError by remember { mutableStateOf(false) }
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
-    val localAppUrl = "file:///android_asset/www/index.html"
+    val localAppUrl = "https://appassets.android.com/assets/www/index.html"
     val webAppUrl = "https://ais-pre-2ezjlg7ygolcgvkdlo7zla-290275720433.asia-northeast1.run.app"
 
     val handleConnectionRetry: () -> Unit = {
@@ -227,32 +227,42 @@ fun MainScreen(
                             view: WebView?,
                             request: WebResourceRequest?
                         ): WebResourceResponse? {
-                            val url = request?.url
-                            val urlString = url?.toString() ?: ""
-                            if (url != null && (url.host == "appassets.android.com" || url.host == "localhost" || urlString.startsWith("file:///android_asset/www/"))) {
-                                var path = url.path ?: ""
-                                if (urlString.startsWith("file:///android_asset/www/")) {
-                                    path = urlString.removePrefix("file:///android_asset/www/")
+                            val url = request?.url ?: return super.shouldInterceptRequest(view, request)
+                            val urlString = url.toString()
+                            val host = url.host ?: ""
+
+                            if (host == "appassets.android.com" || host == "localhost" || urlString.startsWith("file:///android_asset/")) {
+                                var path = if (urlString.startsWith("file:///android_asset/")) {
+                                    urlString.removePrefix("file:///android_asset/")
+                                } else {
+                                    url.path ?: ""
                                 }
                                 if (path.startsWith("/")) path = path.substring(1)
                                 if (path.contains("?")) path = path.substringBefore("?")
                                 if (path.contains("#")) path = path.substringBefore("#")
-                                if (path.isEmpty() || path == "index.html") path = "index.html"
 
-                                val assetPath = "www/$path"
+                                if (path.startsWith("assets/")) {
+                                    path = path.substring(7)
+                                }
+
+                                var assetPath = if (path.startsWith("www/")) path else "www/$path"
+                                if (assetPath == "www" || assetPath == "www/" || assetPath == "www/index.html") {
+                                    assetPath = "www/index.html"
+                                }
+
                                 return try {
                                     val inputStream = ctx.assets.open(assetPath)
                                     val mimeType = when {
-                                        path.endsWith(".html") -> "text/html"
-                                        path.endsWith(".js") || path.endsWith(".mjs") -> "text/javascript"
-                                        path.endsWith(".css") -> "text/css"
-                                        path.endsWith(".png") -> "image/png"
-                                        path.endsWith(".jpg") || path.endsWith(".jpeg") -> "image/jpeg"
-                                        path.endsWith(".svg") -> "image/svg+xml"
-                                        path.endsWith(".json") -> "application/json"
-                                        path.endsWith(".woff2") -> "font/woff2"
-                                        path.endsWith(".woff") -> "font/woff"
-                                        path.endsWith(".ttf") -> "font/ttf"
+                                        assetPath.endsWith(".html") -> "text/html"
+                                        assetPath.endsWith(".js") || assetPath.endsWith(".mjs") -> "text/javascript"
+                                        assetPath.endsWith(".css") -> "text/css"
+                                        assetPath.endsWith(".png") -> "image/png"
+                                        assetPath.endsWith(".jpg") || assetPath.endsWith(".jpeg") -> "image/jpeg"
+                                        assetPath.endsWith(".svg") -> "image/svg+xml"
+                                        assetPath.endsWith(".json") -> "application/json"
+                                        assetPath.endsWith(".woff2") -> "font/woff2"
+                                        assetPath.endsWith(".woff") -> "font/woff"
+                                        assetPath.endsWith(".ttf") -> "font/ttf"
                                         else -> "application/octet-stream"
                                     }
                                     WebResourceResponse(mimeType, "UTF-8", inputStream).apply {

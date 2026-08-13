@@ -213,7 +213,7 @@
         }
       }, true);
     </script>
-    <script type="module" src="/src/main.tsx"></script>
+    <script defer type="module" src="/src/main.tsx"></script>
     <script>
       if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         const isDev = location.hostname === 'localhost' || location.hostname.includes('ais-dev') || location.hostname.includes('run.app');
