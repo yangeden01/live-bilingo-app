@@ -426,35 +426,72 @@ export default function App() {
 
   const handleManualTriggerSubtitle = useCallback(async () => {
     const sampleParagraphs = [
-      "You are listening to Public News Radio. In top stories across the area today, transit officials are officially rolling out new unified fare integration cards across regional transit lines, promising seamless travel starting next month.",
-      "Forecasters from the National Weather Service report clear skies across San Francisco and Oakland today, with mild coastal breezes expected to persist throughout the evening. Temperatures will hover near 68 degrees across inland valleys with slight morning fog along the coast.",
-      "California state lawmakers have officially approved a multi-billion dollar climate resilience package aimed at expanding solar grid infrastructure and improving forest fire prevention across Northern California counties over the next five years.",
-      "Traffic on the Bay Bridge westbound into San Francisco is currently moving smoothly following early morning maintenance on the upper deck. Caltrans reminds commuters to stay updated on upcoming night-time lane closures along Highway 101.",
-      "Researchers at UC Berkeley have unveiled a landmark study on marine ecosystem preservation along the Pacific coast. The research highlights successful community-driven habitat restoration efforts that have brought back native kelp forests and marine biodiversity.",
-      "Silicon Valley technology leaders and ethicists gathered today for the annual AI Responsibility Summit in San Jose. Key discussions focused on establishing transparent open-source frameworks and safety standards for next-generation generative AI systems."
+      {
+        en: "You are listening to Public News Radio. In top stories across the area today, transit officials are officially rolling out new unified fare integration cards across regional transit lines, promising seamless travel starting next month.",
+        zh: "【即時新聞廣播】您正在收聽美國公共新聞電台。交通局官員正式宣佈下個月起推出跨區大眾運輸整合票卡，提供無縫搭乘體驗。"
+      },
+      {
+        en: "Forecasters from the National Weather Service report clear skies across San Francisco and Oakland today, with mild coastal breezes expected to persist throughout the evening. Temperatures will hover near 68 degrees across inland valleys with slight morning fog along the coast.",
+        zh: "氣象局預報指出，舊金山與奧克蘭今日天氣晴朗且沿海微風徐徐，內陸山谷氣溫維持在華氏 68 度左右，沿海地區早晚有局部晨霧。"
+      },
+      {
+        en: "California state lawmakers have officially approved a multi-billion dollar climate resilience package aimed at expanding solar grid infrastructure and improving forest fire prevention across Northern California counties over the next five years.",
+        zh: "加州州議員已正式審查通過數十億美元氣候韌性預算案，旨在未來五年內擴建太陽能電網基礎設施並加強北加州森林防火措施。"
+      },
+      {
+        en: "Traffic on the Bay Bridge westbound into San Francisco is currently moving smoothly following early morning maintenance on the upper deck. Caltrans reminds commuters to stay updated on upcoming night-time lane closures along Highway 101.",
+        zh: "西向往舊金山方向的海灣大橋在上層維護結束後車流十分順暢，交通局提醒通勤族留意 101 號公路夜間封閉資訊。"
+      },
+      {
+        en: "Researchers at UC Berkeley have unveiled a landmark study on marine ecosystem preservation along the Pacific coast. The research highlights successful community-driven habitat restoration efforts that have brought back native kelp forests and marine biodiversity.",
+        zh: "加州大學柏克萊分校研究團隊公佈了太平洋沿岸海洋生態保育研究，強調棲地復育成功帶回了原生巨藻森林與海洋生物。"
+      },
+      {
+        en: "Silicon Valley technology leaders and ethicists gathered today for the annual AI Responsibility Summit in San Jose. Key discussions focused on establishing transparent open-source frameworks and safety standards for next-generation generative AI systems.",
+        zh: "矽谷科技領袖與倫理專家今日聚集於聖荷西參與人工智慧責任峰會，核心討論聚焦於建立開源架構與安全規範。"
+      }
     ];
-    const randomParagraph = sampleParagraphs[Math.floor(Math.random() * sampleParagraphs.length)];
+    const selected = sampleParagraphs[Math.floor(Math.random() * sampleParagraphs.length)];
+    let translatedZh = selected.zh;
 
     try {
       const res = await fetch(getApiUrl('/api/translate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: randomParagraph }),
+        body: JSON.stringify({ text: selected.en }),
       });
-      const data = await res.json();
-      if (data.english && data.traditionalChinese) {
-        handleNewSubtitle({
-          id: `manual-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          createdAt: Date.now(),
-          english: data.english,
-          traditionalChinese: data.traditionalChinese,
-          isFinal: true,
-        });
+      if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data.traditionalChinese) {
+            translatedZh = data.traditionalChinese;
+          }
+        }
+      } else {
+        // Fallback to client direct GTX translation
+        const gtxUrl = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=' + encodeURIComponent(selected.en);
+        const clientRes = await fetch(gtxUrl);
+        if (clientRes.ok) {
+          const json = await clientRes.json();
+          if (Array.isArray(json) && Array.isArray(json[0])) {
+            const result = json[0].map((p: any) => (Array.isArray(p) && typeof p[0] === 'string' ? p[0] : '')).join('').trim();
+            if (result) translatedZh = result;
+          }
+        }
       }
     } catch (e) {
-      console.error('Manual subtitle trigger error:', e);
+      console.warn('Manual trigger fallback to built-in translation:', e);
     }
+
+    handleNewSubtitle({
+      id: `manual-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      createdAt: Date.now(),
+      english: selected.en,
+      traditionalChinese: translatedZh,
+      isFinal: true,
+    });
   }, [handleNewSubtitle]);
 
   useEffect(() => {

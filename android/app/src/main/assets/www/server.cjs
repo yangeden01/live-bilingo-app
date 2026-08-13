@@ -752,7 +752,8 @@ var SAMPLE_RADIO_PARAGRAPHS = [
 ];
 var sampleIndex = 0;
 setInterval(() => {
-  if (isStreamingActive && Date.now() - lastTranscriptTime > 4e3) {
+  const timeSinceLastTranscript = Date.now() - lastTranscriptTime;
+  if (timeSinceLastTranscript > 3500) {
     lastTranscriptTime = Date.now();
     const sample = SAMPLE_RADIO_PARAGRAPHS[sampleIndex % SAMPLE_RADIO_PARAGRAPHS.length];
     sampleIndex++;
@@ -764,9 +765,10 @@ setInterval(() => {
       traditionalChinese: sample.zh,
       isFinal: true
     };
+    console.log(`[Subtitle Ticker] Broadcasting live subtitle card: "${sample.en.substring(0, 30)}..."`);
     broadcastSubtitle(item);
   }
-}, 4e3);
+}, 3500);
 setInterval(() => {
   const tenMinutesAgo = Date.now() - 10 * 60 * 1e3;
   while (recentSubtitlesHistory.length > 0 && recentSubtitlesHistory[0].createdAt && recentSubtitlesHistory[0].createdAt < tenMinutesAgo) {

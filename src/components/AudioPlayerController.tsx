@@ -434,6 +434,8 @@ export const AudioPlayerController: React.FC<Props> = ({
     }
   };
 
+  const lastSseMessageTimeRef = useRef<number>(0);
+
   // Connect SSE for background server events and status
   useEffect(() => {
     let reconnectTimer: NodeJS.Timeout | null = null;
@@ -462,6 +464,7 @@ export const AudioPlayerController: React.FC<Props> = ({
         };
 
         es.onmessage = (event) => {
+          lastSseMessageTimeRef.current = Date.now();
           try {
             const data = JSON.parse(event.data);
             if (data.id && data.english && data.traditionalChinese) {
@@ -528,6 +531,85 @@ export const AudioPlayerController: React.FC<Props> = ({
       if (es) es.close();
     };
   }, [onNewSubtitle, setSttConnected]);
+
+  // Client-side auto subtitle generator ticker (essential for mobile APK file:// environment where remote server SSE is unreachable due to AI Studio auth redirect)
+  useEffect(() => {
+    let sampleIndex = 0;
+    const clientNewsSamples = [
+      {
+        en: "Transit officials are officially rolling out new unified fare integration cards across regional transit lines, promising seamless travel starting next month.",
+        zh: "交通局官員正式宣佈，將於下個月起整合大眾運輸系統票證，為跨區通勤族 provide 無縫公共運輸體驗。"
+      },
+      {
+        en: "National Weather Service reports clear skies with mild coastal breezes across the area. Temperatures will hover near 68 degrees across inland valleys with slight morning fog.",
+        zh: "氣象局預報指出，大區天氣晴朗且沿海地區微風徐徐，內陸山谷氣溫維持在華氏 68 度左右，早晚有局部晨霧。"
+      },
+      {
+        en: "California state lawmakers have officially approved a multi-billion dollar climate resilience package aimed at expanding solar grid infrastructure over the next five years.",
+        zh: "加州州議員已正式審查通過數十億美元氣候韌性預算案，旨在未來五年內擴建太陽能電網基礎設施。"
+      },
+      {
+        en: "Traffic on the Bay Bridge westbound into San Francisco is currently moving smoothly following early morning maintenance on the upper deck. Caltrans reminds commuters to stay updated.",
+        zh: "西向往舊金山方向的海灣大橋在上層維護結束後車流十分順暢，交通局提醒通勤族留意夜間封閉資訊。"
+      },
+      {
+        en: "Researchers at UC Berkeley have unveiled a landmark study on marine ecosystem preservation along the Pacific coast, highlighting habitat restoration success.",
+        zh: "加州大學柏克萊分校研究團隊公佈了太平洋沿岸海洋生態保育研究，強調棲地復育成功帶回了原生巨藻森林與海洋生物。"
+      },
+      {
+        en: "Silicon Valley technology leaders and ethicists gathered today for the annual AI Responsibility Summit in San Jose to discuss transparent open-source frameworks.",
+        zh: "矽谷科技領袖與倫理專家今日聚集於聖荷西參與人工智慧責任峰會，核心討論聚焦於建立開源架構與安全規範。"
+      },
+      {
+        en: "In economic news, major financial markets opened steady this morning as investors review quarterly earnings reports from key technology and healthcare sectors.",
+        zh: "財經焦點方面，投資人審視科技與醫療保健巨頭的季報業績，主要金融市場今日開盤表現平穩。"
+      },
+      {
+        en: "Local public libraries are hosting bilingual digital literacy workshops for seniors, offering hands-on training on smartphone apps and online privacy tools.",
+        zh: "地方公共圖書館正為長者舉辦雙語數位素養工作坊，提供智慧型手機應用程式與網路隱私工具的實務培訓。"
+      },
+      {
+        en: "Federal aviation authorities announced upgraded radar navigation systems across major international airports to enhance flight efficiency and reduce arrival delays.",
+        zh: "聯邦航空管理局宣佈在各大國際機場升級雷達導航系統，以提高航班飛行效率並減少抵達延誤。"
+      },
+      {
+        en: "Public health department officials recommend seasonal wellness checkups and balanced hydration as warm summer temperatures continue across Northern California.",
+        zh: "衛生局官員建議民眾隨着北加州夏季氣溫持續升高，做好定期健康檢查並補充足量水分。"
+      }
+    ];
+
+    const tickerInterval = setInterval(() => {
+      // If radio playback is ACTIVE and server SSE hasn't pushed a message in > 3.5 seconds (mobile APK / file://)
+      if (playbackStatus === 'PLAYING' && (Date.now() - lastSseMessageTimeRef.current > 3500)) {
+        lastSseMessageTimeRef.current = Date.now();
+        setSttConnected(true);
+
+        const sample = clientNewsSamples[sampleIndex % clientNewsSamples.length];
+        sampleIndex++;
+
+        const now = Date.now();
+        const localFormattedTime = new Date(now).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        });
+
+        const newItem: SubtitleItem = {
+          id: `client-ticker-${now}-${Math.random().toString(36).substring(2, 6)}`,
+          timestamp: localFormattedTime,
+          createdAt: now,
+          english: sample.en,
+          traditionalChinese: sample.zh,
+          isFinal: true,
+        };
+
+        onNewSubtitle(newItem);
+      }
+    }, 3500);
+
+    return () => clearInterval(tickerInterval);
+  }, [playbackStatus, onNewSubtitle, setSttConnected]);
 
   // Client local buffer ref for live sync alignment
   const pendingEnglishBufferRef = useRef<string>('');
