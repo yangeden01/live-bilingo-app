@@ -17,6 +17,7 @@ export default defineConfig(() => {
     base: './',
     plugins: [react(), tailwindcss(), removeCrossoriginPlugin()],
     build: {
+      emptyOutDir: true,
       target: 'es2018',
       modulePreload: false,
       cssCodeSplit: false,

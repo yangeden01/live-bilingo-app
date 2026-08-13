@@ -216,8 +216,17 @@
       }, true);
     </script>
     <script>
-      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-        const isDev = location.hostname === 'localhost' || location.hostname.includes('ais-dev') || location.hostname.includes('run.app');
+      if ('serviceWorker' in navigator) {
+        const isNativeApp = !!(window.AndroidBridge) || 
+          location.hostname === 'appassets.android.com' || 
+          location.protocol === 'file:' || 
+          navigator.userAgent.includes('AndroidApp');
+
+        const isDev = isNativeApp || 
+          location.hostname === 'localhost' || 
+          location.hostname.includes('ais-dev') || 
+          location.hostname.includes('run.app');
+
         if (isDev) {
           navigator.serviceWorker.getRegistrations().then((registrations) => {
             for (let registration of registrations) {
@@ -229,7 +238,7 @@
               for (let name of names) caches.delete(name);
             });
           }
-        } else {
+        } else if (location.protocol.startsWith('http')) {
           window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js', { scope: '/' })
               .then((reg) => {
@@ -241,6 +250,6 @@
         }
       }
     </script>
-    <script src="./assets/index-DYM6A5cI.js"></script>
+    <script src="./assets/index-DdzQ5JqZ.js"></script>
   </body>
 </html>

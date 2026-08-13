@@ -115,7 +115,7 @@ fun MainScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isOfflineError by remember { mutableStateOf(false) }
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
-    val localAppUrl = "https://appassets.android.com/assets/www/index.html"
+    val localAppUrl = "file:///android_asset/www/index.html"
     val webAppUrl = "https://ais-pre-2ezjlg7ygolcgvkdlo7zla-290275720433.asia-northeast1.run.app"
 
     val handleConnectionRetry: () -> Unit = {
@@ -216,8 +216,8 @@ fun MainScreen(
                         loadWithOverviewMode = true
                         setSupportZoom(false)
                         textZoom = 100
-                        userAgentString = "$userAgentString AndroidApp/2.1.2"
-                        cacheMode = WebSettings.LOAD_DEFAULT
+                        userAgentString = "$userAgentString AndroidApp/2.1.3"
+                        cacheMode = WebSettings.LOAD_NO_CACHE
                     }
 
                     addJavascriptInterface(WebAppInterface(ctx, handleConnectionRetry) { isLoading = false }, "AndroidBridge")
