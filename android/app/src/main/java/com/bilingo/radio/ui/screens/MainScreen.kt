@@ -115,7 +115,7 @@ fun MainScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isOfflineError by remember { mutableStateOf(false) }
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
-    val localAppUrl = "https://appassets.android.com/index.html"
+    val localAppUrl = "file:///android_asset/www/index.html"
     val webAppUrl = "https://ais-pre-2ezjlg7ygolcgvkdlo7zla-290275720433.asia-northeast1.run.app"
 
     val handleConnectionRetry: () -> Unit = {
@@ -228,9 +228,15 @@ fun MainScreen(
                             request: WebResourceRequest?
                         ): WebResourceResponse? {
                             val url = request?.url
-                            if (url != null && (url.host == "appassets.android.com" || url.host == "localhost")) {
+                            val urlString = url?.toString() ?: ""
+                            if (url != null && (url.host == "appassets.android.com" || url.host == "localhost" || urlString.startsWith("file:///android_asset/www/"))) {
                                 var path = url.path ?: ""
+                                if (urlString.startsWith("file:///android_asset/www/")) {
+                                    path = urlString.removePrefix("file:///android_asset/www/")
+                                }
                                 if (path.startsWith("/")) path = path.substring(1)
+                                if (path.contains("?")) path = path.substringBefore("?")
+                                if (path.contains("#")) path = path.substringBefore("#")
                                 if (path.isEmpty() || path == "index.html") path = "index.html"
 
                                 val assetPath = "www/$path"
