@@ -6,12 +6,15 @@ export function getApiUrl(path: string): string {
     return path;
   }
 
-  // Only prepend remote BACKEND_URL when running inside native Android file:// or offline local asset environment
+  // Prepend remote BACKEND_URL when running inside native Android app or local asset environment
   if (
     typeof window !== 'undefined' &&
     (window.location.protocol === 'file:' ||
       window.location.origin === 'null' ||
-      window.location.href.startsWith('file://'))
+      window.location.href.startsWith('file://') ||
+      window.location.hostname === 'appassets.android.com' ||
+      window.location.hostname === 'localhost' ||
+      !!(window as any).AndroidBridge)
   ) {
     const cleanPath = path.startsWith('/') ? path : '/' + path;
     return `${BACKEND_URL}${cleanPath}`;
@@ -19,3 +22,4 @@ export function getApiUrl(path: string): string {
 
   return path;
 }
+

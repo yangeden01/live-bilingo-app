@@ -775,7 +775,7 @@ export const Material3AndroidFrame: React.FC<Props> = ({
                   </button>
                   <button
                     onClick={() => {
-                      fetch('/api/translate', {
+                      fetch(getApiUrl('/api/translate'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
